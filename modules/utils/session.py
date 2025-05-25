@@ -3,6 +3,7 @@ Session management utilities for the application.
 """
 
 import json
+import os
 import time
 from datetime import datetime
 from rich.console import Console
@@ -35,7 +36,7 @@ def load_session():
     Returns:
         dict: The session data, or an empty dict if loading fails.
     """
-    if not json.path.exists(SESSION_FILE):
+    if not os.path.exists(SESSION_FILE):
         return {}
         
     try:
