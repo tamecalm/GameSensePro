@@ -21,6 +21,9 @@ def save_session(data):
         data (dict): The session data to save.
     """
     try:
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(SESSION_FILE), exist_ok=True)
+        
         with open(SESSION_FILE, "w") as f:
             json.dump(data, f, indent=2)
         console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Session saved[/]")
