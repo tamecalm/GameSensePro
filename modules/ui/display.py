@@ -37,7 +37,7 @@ def display_results(info, cam, fire, gyro, game, mode):
         f"[bold magenta]=== SENSITIVITY RESULTS FOR {game.upper()}{mode_display} ===[/]\n"
         f"[bold cyan][Displayed at {datetime.now().strftime('%H:%M:%S')}][/]",
         title="Results",
-        border_style="magenta"
+        border_style="magenta"  # Changed from 'badge' to 'magenta'
     ))
     
     # Device information table
