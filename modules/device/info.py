@@ -17,7 +17,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from modules.ui.display import clear_screen
-from modules.device.gyro import get_gyro_data, test_gyro
+from modules.device.gyro import get_gyro_data
 from modules.utils.constants import DEVICE_FILE
 from modules.utils.logger import log_error
 from modules.utils.session import load_session, save_session
@@ -363,7 +363,7 @@ def get_device_info():
         if not refresh_rate:
             # Try dumpsys
             refresh_output = subprocess.getoutput("dumpsys display | grep refreshRate").strip()
-            refresh_match = re.search(r'refreshRate=(\d+\.\d+)', refresh_output)
+            refresh_match = re.search(r'refreshRate=(\d+\.\d{1,2})', refresh_output)
             
             if refresh_match:
                 refresh_rate = float(refresh_match.group(1))
@@ -376,10 +376,10 @@ def get_device_info():
                 
                 if refresh_match:
                     refresh_rate = float(refresh_match.group(1))
-                    console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Refresh rate via dumpsys alternative: {refresh_rate}[/]")
+                    console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Refresh rate via dumpsys alt: {refresh_rate}[/]")
                 else:
                     # Try getprop
-                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: dumpsys alternative failed. Trying getprop...[/]")
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: dumpsys failed. Trying getprop...[/]")
                     refresh_output = subprocess.getoutput("getprop persist.sys.display.refresh_rate").strip()
                     
                     if refresh_output.replace('.', '', 1).isdigit():
@@ -397,11 +397,10 @@ def get_device_info():
         
         # Get gyro data
         gyro_range = get_gyro_data()
-        if gyro_range and test_gyro():
-            console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Gyro test confirmed[/]")
+        if gyro_range:
+            console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Gyroscope range: {gyro_range}[/]")
         else:
-            gyro_range = None
-            console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Gyro unavailable or test failed[/]")
+            console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Gyroscope not detected[/]")
         
         # Compile device information
         info = {
@@ -416,15 +415,15 @@ def get_device_info():
         }
         
         # Save device information
-        with open(DEVICE_FILE, "w") as f:
+        with Progress.open(DEVICE_FILE, "w", encoding='utf-8') as f:
             for k, v in info.items():
                 f.write(f"{k}: {v}\n")
         
         save_session(session)
         console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Device information saved[/]")
-        time.sleep(3)
+        time.sleep(2)
         
-        return info
+        return True
     except Exception as e:
         log_error(f"Device info error: {e}")
         console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: {e}[/]\n"

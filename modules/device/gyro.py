@@ -145,8 +145,8 @@ def get_gyro_data():
         f"[bold cyan][Continued at {datetime.now().strftime('%H:%M:%S')}][/]\n"
         "Automatic gyroscope detection failed. Does your device have a working gyroscope?\n1. Yes\n2. No\n\n"
         "To determine your device's gyroscope range, we recommend:\n"
-        "1. Install 'Sensor Kinetics' from Google Play:\n"
-        "   - Open the app, select the gyroscope sensor.\n"
+        "1. Install 'DevCheck' from Google Play:\n"
+        "   - Open the app, go to the 'Sensors' tab, and select the gyroscope sensor.\n"
         "   - Rotate your device in all directions and note the maximum angular velocity (in radians/second).\n"
         "   - Enter this value below.\n"
         "2. Alternatively, connect your device to a PC and run:\n"
@@ -161,8 +161,8 @@ def get_gyro_data():
     
     if choice == 1:
         console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Please enter your device's gyroscope range (in radians/second).[/]")
-        console.print(f"[bold yellow]Typical range is 5.0 to 20.0. Use Sensor Kinetics or adb to confirm.[/]")
-        range_value = FloatPrompt.ask("[bold yellow]Enter gyro range[/]", default=10.0)
+        console.print(f"[bold yellow]Typical range is 5.0 to 20.0. Use DevCheck or adb to confirm.[/]")
+        range_value = FloatPrompt.ask("[bold yellow]Enter gyro range[/]", default=17.4)
         
         if range_value <= 0:
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Gyro range must be positive[/]")
@@ -176,43 +176,3 @@ def get_gyro_data():
     console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Gyroscope unavailable[/]")
     time.sleep(3)
     return None
-
-def test_gyro():
-    """
-    Tests if gyroscope is working correctly.
-    
-    Returns:
-        bool: True if gyroscope is working, False otherwise.
-    """
-    clear_screen()
-    console.print(Panel(
-        f"[bold magenta]=== GYRO TEST ===[/]\n"
-        f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]\n"
-        "Tilt your device left and right for 3 seconds.",
-        title="Gyro Test",
-        border_style="magenta"
-    ))
-    
-    time.sleep(3)
-    
-    try:
-        output = subprocess.getoutput("termux-sensor -s GYROSCOPE -n 1 -d 100")
-        data = json.loads(output)
-        
-        if "GYROSCOPE" in data and data["GYROSCOPE"] and len(data["GYROSCOPE"]) > 0:
-            values = data["GYROSCOPE"][0]["values"]
-            
-            if len(values) >= 3 and any(abs(v) > 0.1 for v in values):
-                console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Gyro test passed[/]")
-                time.sleep(3)
-                return True
-        
-        log_error("Gyro test failed: No valid data")
-        console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Gyro test failed[/]")
-        return False
-    except Exception as e:
-        log_error(f"Gyro test error: {e}")
-        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Gyro test error - {e}[/]")
-        return False
-    finally:
-        time.sleep(3)
