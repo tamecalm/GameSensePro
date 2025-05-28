@@ -9,6 +9,9 @@ from rich.panel import Panel
 from rich.prompt import IntPrompt
 
 from modules.ui.display import clear_screen
+from modules.features.updates import check_for_updates
+from modules.features.benchmark import run_benchmark
+from modules.features.tutorial import run_tutorial
 
 console = Console()
 
@@ -30,14 +33,18 @@ def menu(translations):
         f"2. {translations.get('provide_feedback', 'Provide Feedback')}\n"
         f"3. {translations.get('view_stats', 'View Stats')}\n"
         f"4. {translations.get('clear_stats', 'Clear Stats')}\n"
-        f"5. {translations.get('exit', 'Exit')}",
+        f"5. {translations.get('run_benchmark', 'Run Performance Benchmark')}\n"
+        f"6. {translations.get('view_community', 'View Community Settings')}\n"
+        f"7. {translations.get('check_updates', 'Check for Updates')}\n"
+        f"8. {translations.get('start_tutorial', 'Start Tutorial')}\n"
+        f"9. {translations.get('exit', 'Exit')}",
         title=translations.get('menu', 'Menu'),
         border_style="magenta"
     ))
     
     choice = IntPrompt.ask(
-        f"[bold yellow]{translations.get('choose_option', 'Choose an option (1-5)')}[/]", 
-        choices=["1", "2", "3", "4", "5"], 
+        f"[bold yellow]{translations.get('choose_option', 'Choose an option (1-9)')}[/]", 
+        choices=["1", "2", "3", "4", "5", "6", "7", "8", "9"], 
         default=1
     )
     
