@@ -91,7 +91,7 @@ GAME_SETTINGS = {
 }
 
 # GitHub repository info for updates
-GITHUB_REPO = "https://api.github.com/repos/user/gamesensepro"
+GITHUB_REPO = "https://api.github.com/repos/tamecalm/gamesensepro"
 CURRENT_VERSION = "1.0.0"
 
 # Translation API URL
