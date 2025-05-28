@@ -39,6 +39,10 @@ def check_for_updates():
                 "Accept": "application/vnd.github.v3+json"
             }
             
+            # Simulate real-time checking with smaller progress increments
+            progress.update(task, advance=20)
+            time.sleep(0.5)  # Simulate network delay
+            
             # Get latest release info with retry
             for attempt in range(3):
                 try:
@@ -48,14 +52,16 @@ def check_for_updates():
                 except requests.exceptions.RequestException as e:
                     if attempt == 2:
                         raise e
+                    progress.update(task, advance=10)
                     time.sleep(2)
             
             latest = response.json()
-            progress.update(task, advance=50)
+            progress.update(task, advance=30)
             
             latest_version = latest["tag_name"].lstrip("v")
             needs_update, is_equal = compare_versions(CURRENT_VERSION, latest_version)
             
+            # Save update info
             update_info = {
                 "current_version": CURRENT_VERSION,
                 "latest_version": latest_version,
@@ -63,15 +69,17 @@ def check_for_updates():
                 "update_available": needs_update
             }
             
-            # Ensure directory exists for UPDATE_CHECK_FILE
             os.makedirs(os.path.dirname(UPDATE_CHECK_FILE), exist_ok=True)
             with open(UPDATE_CHECK_FILE, "w") as f:
                 json.dump(update_info, f, indent=2)
             
-            progress.update(task, advance=50)
+            progress.update(task, advance=40)
+            
+            # Ensure progress bar completes before showing changelog
+            time.sleep(0.5)
             
             if needs_update:
-                # Display shortened changelog if too long
+                # Display changelog
                 changelog = latest.get("body", "No changelog provided.")
                 max_length = 200
                 max_lines = 3
@@ -89,8 +97,9 @@ def check_for_updates():
                     console.print("\nChangelog:")
                     console.print(changelog)
                 
-                # Ask user if they want to update
+                # Prompt for update
                 if Confirm.ask("\n[bold yellow]Would you like to download and install the update?[/]"):
+                    clear_screen()
                     if download_and_apply_update(latest):
                         console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Update installed successfully! Please restart the application.[/]")
                         return True
@@ -106,6 +115,10 @@ def check_for_updates():
             log_error(f"Update check failed: HTTP {e.response.status_code} - {e}")
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
             return False
+        except IOError as e:
+            log_error(f"Failed to write update info: {e}")
+            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
+            return False
         except Exception as e:
             log_error(f"Update check failed: {e}")
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
@@ -116,23 +129,21 @@ def check_for_updates():
 def compare_versions(current, latest):
     """Compare version numbers, handling non-numeric tags."""
     try:
-        # Clean and split version strings
         current_clean = current.lstrip("v")
         latest_clean = latest.lstrip("v")
         current_parts = [int(x) for x in current_clean.split(".") if x.isdigit()]
         latest_parts = [int(x) for x in latest_clean.split(".") if x.isdigit()]
         
-        # Pad shorter version with zeros
         max_len = max(len(current_parts), len(latest_parts))
         current_parts.extend([0] * (max_len - len(current_parts)))
         latest_parts.extend([0] * (max_len - len(latest_parts)))
         
         for i in range(max_len):
             if latest_parts[i] > current_parts[i]:
-                return True, False  # Update needed, not equal
+                return True, False
             elif current_parts[i] > latest_parts[i]:
-                return False, False  # No update, not equal
-        return False, True  # No update, versions equal
+                return False, False
+        return False, True
     except ValueError as e:
         log_error(f"Version comparison failed: {e}")
         console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Invalid version format: current={current}, latest={latest}[/]")
@@ -140,7 +151,6 @@ def compare_versions(current, latest):
 
 def download_and_apply_update(latest):
     """Download and apply update."""
-    clear_screen()
     console.print(Panel(
         f"[bold magenta]=== DOWNLOADING AND INSTALLING UPDATE ===[/]\n"
         f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]",
@@ -179,7 +189,6 @@ def download_and_apply_update(latest):
             )
             response.raise_for_status()
             
-            # Save the zip file
             update_file = "update.zip"
             with open(update_file, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
@@ -190,14 +199,11 @@ def download_and_apply_update(latest):
             
             # Apply the update
             try:
-                # Extract to a temporary directory
                 temp_dir = "update_temp"
                 os.makedirs(temp_dir, exist_ok=True)
                 with zipfile.ZipFile(update_file, "r") as zip_ref:
                     zip_ref.extractall(temp_dir)
                 
-                # Move files to current directory (customize based on your app structure)
-                # Assumes zip contains a folder like "GameSensePro-1.0.4"
                 extracted_folder = os.path.join(temp_dir, os.listdir(temp_dir)[0])
                 for item in os.listdir(extracted_folder):
                     src = os.path.join(extracted_folder, item)
@@ -229,7 +235,6 @@ def download_and_apply_update(latest):
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to download update: {e}[/]")
             return False
         finally:
-            # Clean up if update failed
             try:
                 if os.path.exists("update.zip"):
                     os.remove("update.zip")
