@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.prompt import Confirm
 
-from modules.utils.constants import GITHUB_REPO, CURRENT_VERSION, UPDATE_CHECK_FILE
+from modules.utils.constants import GITHUB_REPO, UPDATE_CHECK_FILE, get_current_version
 from modules.utils.logger import log_error
 from modules.ui.display import clear_screen
 
@@ -23,9 +23,11 @@ console = Console()
 def check_for_updates():
     """Check for available updates."""
     clear_screen()
+    current_version = get_current_version()
     console.print(Panel(
         f"[bold magenta]=== CHECKING FOR UPDATES ===[/]\n"
-        f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]",
+        f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]\n"
+        f"Current version: {current_version}",
         title="Update Check",
         border_style="magenta"
     ))
@@ -60,7 +62,7 @@ def check_for_updates():
             progress.update(task, advance=30)
             
             latest_version = latest["tag_name"].lstrip("v")
-            needs_update, is_equal = compare_versions(CURRENT_VERSION, latest_version)
+            needs_update, is_equal = compare_versions(current_version, latest_version)
             progress.update(task, advance=20)
             
             # Validate UPDATE_CHECK_FILE
@@ -70,7 +72,7 @@ def check_for_updates():
             
             # Save update info
             update_info = {
-                "current_version": CURRENT_VERSION,
+                "current_version": current_version,
                 "latest_version": latest_version,
                 "last_checked": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "update_available": needs_update
@@ -78,7 +80,7 @@ def check_for_updates():
             
             update_dir = os.path.dirname(update_file) or "."
             os.makedirs(update_dir, exist_ok=True)
-            with open(update_file, "w") as f:
+            with open(update_file, "w", encoding="utf-8") as f:
                 json.dump(update_info, f, indent=2)
             
             progress.update(task, advance=30)
@@ -131,7 +133,7 @@ def check_for_updates():
         return False
     except (OSError, ValueError) as e:
         log_error(f"Failed to save update info: {e}")
-        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}]] ERROR: Failed to save update info: {e}[/]")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
         return False
     except Exception as e:
         log_error(f"Update check failed: {e}")
@@ -167,7 +169,8 @@ def download_and_apply_update(latest):
     """Download and apply update using GitHub's auto-generated source code zip."""
     console.print(Panel(
         f"[bold magenta]=== DOWNLOADING AND INSTALLING UPDATE ===[/]\n"
-        f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]",
+        f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]\n"
+        f"Installing version: {latest['tag_name'].lstrip('v')}",
         title="Update Download",
         border_style="magenta"
     ))
@@ -183,6 +186,7 @@ def download_and_apply_update(latest):
             
             # Use the auto-generated source code zip
             zipball_url = latest.get("zipball_url")
+            latest_version = latest["tag_name"].lstrip("v")
             if not zipball_url:
                 log_error("No zipball_url found in release")
                 console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: No update package found[/]")
@@ -214,7 +218,7 @@ def download_and_apply_update(latest):
                 with zipfile.ZipFile(update_file, "r") as zip_ref:
                     zip_ref.extractall(temp_dir)
                 
-                # Find the extracted folder (e.g., GameSensePro-1.0.8-xxxx)
+                # Find the extracted folder (e.g., GameSensePro-1.0.10-xxxx)
                 extracted_folder = os.path.join(temp_dir, os.listdir(temp_dir)[0])
                 for item in os.listdir(extracted_folder):
                     src = os.path.join(extracted_folder, item)
@@ -225,6 +229,19 @@ def download_and_apply_update(latest):
                         shutil.copy2(src, dst)
                 
                 progress.update(task, advance=20)
+                
+                # Update UPDATE_CHECK_FILE with new current_version
+                update_dir = os.path.dirname(UPDATE_CHECK_FILE) or "."
+                os.makedirs(update_dir, exist_ok=True)
+                update_info = {
+                    "current_version": latest_version,
+                    "latest_version": latest_version,
+                    "last_checked": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "update_available": False
+                }
+                with open(UPDATE_CHECK_FILE, "w", encoding="utf-8") as f:
+                    json.dump(update_info, f, indent=2)
                 
                 # Clean up
                 shutil.rmtree(temp_dir)

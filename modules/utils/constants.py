@@ -3,6 +3,8 @@ Constants used throughout the application.
 """
 
 import os
+import json
+from datetime import datetime
 
 # File paths
 DATA_DIR = "data"
@@ -28,7 +30,7 @@ RESULT_JSON = f"{DATA_DIR}/sensitivity_result.json"
 STATS_FILE = f"{DATA_DIR}/stats.json"
 
 # Game-specific file paths
-def get_game_paths(game):
+def get_game_path(game):
     """Get file paths for a specific game."""
     game_dir = GAMES_DIR[game]
     return {
@@ -49,12 +51,12 @@ GAME_SETTINGS = {
         "recommended_settings": {
             "aim_assist": "Enhanced",
             "gyro_mode": "Always On",
-            "fire_mode": "Mixed"
+            "fire_mode": "Automatic"
         }
     },
     "Free Fire": {
         "cap": 100,
-        "menu_path": "Settings > Sensitivity Settings",
+        "menu_path": "Settings > Sensitivity",
         "recommended_settings": {
             "aim_assist": "On",
             "precise_on_scope": "On",
@@ -66,7 +68,7 @@ GAME_SETTINGS = {
         "menu_path": "Settings > Sensitivity",
         "recommended_settings": {
             "aim_assist": "On",
-            "perspective": "TPP",
+            "perspective": "FPS",
             "ads_mode": "Hold"
         }
     },
@@ -92,8 +94,30 @@ GAME_SETTINGS = {
 
 # GitHub repository info for updates
 GITHUB_REPO = "https://api.github.com/repos/tamecalm/gamesensepro"
-CURRENT_VERSION = "1.0.9"  # Update to the current version of your application
-UPDATE_CHECK_FILE = "./update_info.json"  # Ensure valid path
+
+def get_current_version():
+    """Read the current version from UPDATE_CHECK_FILE or return default."""
+    default_version = "1.0.9"
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        if os.path.exists(UPDATE_CHECK_FILE):
+            with open(UPDATE_CHECK_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                version = data.get("current_version")
+                if version and isinstance(version, str) and version.count(".") == 2:
+                    return version
+        # Initialize UPDATE_CHECK_FILE with default version
+        with open(UPDATE_CHECK_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "current_version": default_version,
+                "last_checked": datetime.now().isoformat()
+            }, f, indent=2)
+        return default_version
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"Error reading version: {e}. Using default version {default_version}")
+        return default_version
+
+CURRENT_VERSION = get_current_version()
 
 # Translation API URL
 TRANSLATION_API_URL = "https://api.mymemory.translated.net/get"
