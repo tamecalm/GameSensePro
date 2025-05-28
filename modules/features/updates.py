@@ -257,3 +257,5 @@ def download_and_apply_update(latest):
             except:
                 pass
             console.input("Press Enter to return to menu...")
+
+            # Ensure we return to the main menu
