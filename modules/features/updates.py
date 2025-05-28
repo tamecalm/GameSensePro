@@ -131,7 +131,7 @@ def check_for_updates():
         return False
     except (OSError, ValueError) as e:
         log_error(f"Failed to save update info: {e}")
-        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}]] ERROR: Failed to save update info: {e}[/]")
         return False
     except Exception as e:
         log_error(f"Update check failed: {e}")
@@ -164,7 +164,7 @@ def compare_versions(current, latest):
         return False, False
 
 def download_and_apply_update(latest):
-    """Download and apply update."""
+    """Download and apply update using GitHub's auto-generated source code zip."""
     console.print(Panel(
         f"[bold magenta]=== DOWNLOADING AND INSTALLING UPDATE ===[/]\n"
         f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]",
@@ -181,14 +181,10 @@ def download_and_apply_update(latest):
                 "Accept": "application/vnd.github.v3+json"
             }
             
-            # Find the source code zip asset
-            zip_asset = next(
-                (asset for asset in latest["assets"] if asset["name"].endswith(".zip")),
-                None
-            )
-            
-            if not zip_asset:
-                log_error("No zip asset found in release")
+            # Use the auto-generated source code zip
+            zipball_url = latest.get("zipball_url")
+            if not zipball_url:
+                log_error("No zipball_url found in release")
                 console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: No update package found[/]")
                 return False
             
@@ -196,7 +192,7 @@ def download_and_apply_update(latest):
             
             # Download the zip file
             response = requests.get(
-                zip_asset["browser_download_url"],
+                zipball_url,
                 headers=headers,
                 stream=True,
                 timeout=30
@@ -218,6 +214,7 @@ def download_and_apply_update(latest):
                 with zipfile.ZipFile(update_file, "r") as zip_ref:
                     zip_ref.extractall(temp_dir)
                 
+                # Find the extracted folder (e.g., GameSensePro-1.0.8-xxxx)
                 extracted_folder = os.path.join(temp_dir, os.listdir(temp_dir)[0])
                 for item in os.listdir(extracted_folder):
                     src = os.path.join(extracted_folder, item)
@@ -257,5 +254,3 @@ def download_and_apply_update(latest):
             except:
                 pass
             console.input("Press Enter to return to menu...")
-
-            # Ensure we return to the main menu
