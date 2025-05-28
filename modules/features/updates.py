@@ -4,6 +4,8 @@ Auto-update feature utilities for the application.
 
 import json
 import os
+import zipfile
+import shutil
 import requests
 import time
 from datetime import datetime
@@ -37,15 +39,22 @@ def check_for_updates():
                 "Accept": "application/vnd.github.v3+json"
             }
             
-            # Get latest release info
-            response = requests.get(f"{GITHUB_REPO}/releases/latest", headers=headers, timeout=10)
-            response.raise_for_status()
-            latest = response.json()
+            # Get latest release info with retry
+            for attempt in range(3):
+                try:
+                    response = requests.get(f"{GITHUB_REPO}/releases/latest", headers=headers, timeout=10)
+                    response.raise_for_status()
+                    break
+                except requests.exceptions.RequestException as e:
+                    if attempt == 2:
+                        raise e
+                    time.sleep(2)
             
+            latest = response.json()
             progress.update(task, advance=50)
             
             latest_version = latest["tag_name"].lstrip("v")
-            needs_update = compare_versions(CURRENT_VERSION, latest_version)
+            needs_update, is_equal = compare_versions(CURRENT_VERSION, latest_version)
             
             update_info = {
                 "current_version": CURRENT_VERSION,
@@ -54,64 +63,93 @@ def check_for_updates():
                 "update_available": needs_update
             }
             
+            # Ensure directory exists for UPDATE_CHECK_FILE
+            os.makedirs(os.path.dirname(UPDATE_CHECK_FILE), exist_ok=True)
             with open(UPDATE_CHECK_FILE, "w") as f:
                 json.dump(update_info, f, indent=2)
             
             progress.update(task, advance=50)
             
             if needs_update:
-                console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
-                console.print("\nChangelog:")
-                console.print(latest["body"])
+                # Display shortened changelog if too long
+                changelog = latest.get("body", "No changelog provided.")
+                max_length = 200
+                max_lines = 3
+                lines = changelog.splitlines()
+                if len(changelog) > max_length or len(lines) > max_lines:
+                    short_changelog = "\n".join(lines[:max_lines])[:max_length] + "..."
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
+                    console.print("\nChangelog (shortened):")
+                    console.print(short_changelog)
+                    if Confirm.ask("[bold yellow]Would you like to view the full changelog?[/]"):
+                        console.print("\nFull Changelog:")
+                        console.print(changelog)
+                else:
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
+                    console.print("\nChangelog:")
+                    console.print(changelog)
                 
                 # Ask user if they want to update
                 if Confirm.ask("\n[bold yellow]Would you like to download and install the update?[/]"):
-                    if download_update(latest):
-                        console.print("[bold green]Update downloaded successfully! Please restart the application to apply the update.[/]")
+                    if download_and_apply_update(latest):
+                        console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Update installed successfully! Please restart the application.[/]")
                         return True
                     else:
-                        console.print("[bold red]Failed to download update. Please try again later.[/]")
+                        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] Failed to install update. Please try again later.[/]")
                 else:
-                    console.print("[bold yellow]Update skipped. You can check for updates again later.[/]")
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update skipped. You can check for updates again later.[/]")
             else:
-                console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] You're running the latest version![/]")
+                console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] You're running the latest version (v{latest_version})!{' (same as current)' if is_equal else ''}[/]")
             
+            return False
+        except requests.exceptions.HTTPError as e:
+            log_error(f"Update check failed: HTTP {e.response.status_code} - {e}")
+            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
             return False
         except Exception as e:
             log_error(f"Update check failed: {e}")
-            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates[/]")
+            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
             return False
         finally:
             time.sleep(3)
 
 def compare_versions(current, latest):
-    """Compare version numbers."""
-    current_parts = [int(x) for x in current.split(".")]
-    latest_parts = [int(x) for x in latest.split(".")]
-    
-    for i in range(max(len(current_parts), len(latest_parts))):
-        current_part = current_parts[i] if i < len(current_parts) else 0
-        latest_part = latest_parts[i] if i < len(latest_parts) else 0
+    """Compare version numbers, handling non-numeric tags."""
+    try:
+        # Clean and split version strings
+        current_clean = current.lstrip("v")
+        latest_clean = latest.lstrip("v")
+        current_parts = [int(x) for x in current_clean.split(".") if x.isdigit()]
+        latest_parts = [int(x) for x in latest_clean.split(".") if x.isdigit()]
         
-        if latest_part > current_part:
-            return True
-        elif current_part > latest_part:
-            return False
-    
-    return False
+        # Pad shorter version with zeros
+        max_len = max(len(current_parts), len(latest_parts))
+        current_parts.extend([0] * (max_len - len(current_parts)))
+        latest_parts.extend([0] * (max_len - len(latest_parts)))
+        
+        for i in range(max_len):
+            if latest_parts[i] > current_parts[i]:
+                return True, False  # Update needed, not equal
+            elif current_parts[i] > latest_parts[i]:
+                return False, False  # No update, not equal
+        return False, True  # No update, versions equal
+    except ValueError as e:
+        log_error(f"Version comparison failed: {e}")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Invalid version format: current={current}, latest={latest}[/]")
+        return False, False
 
-def download_update(latest):
+def download_and_apply_update(latest):
     """Download and apply update."""
     clear_screen()
     console.print(Panel(
-        f"[bold magenta]=== DOWNLOADING UPDATE ===[/]\n"
+        f"[bold magenta]=== DOWNLOADING AND INSTALLING UPDATE ===[/]\n"
         f"[bold cyan][Started at {datetime.now().strftime('%H:%M:%S')}][/]",
         title="Update Download",
         border_style="magenta"
     ))
     
     with Progress() as progress:
-        task = progress.add_task("[cyan]Downloading update...", total=100)
+        task = progress.add_task("[cyan]Processing update...", total=100)
         
         try:
             headers = {
@@ -141,38 +179,62 @@ def download_update(latest):
             )
             response.raise_for_status()
             
-            progress.update(task, advance=40)
-            
             # Save the zip file
-            with open("update.zip", "wb") as f:
+            update_file = "update.zip"
+            with open(update_file, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
             
-            progress.update(task, advance=30)
+            progress.update(task, advance=40)
             
-            console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Update downloaded successfully![/]")
-            
-            # Clean up the downloaded file
+            # Apply the update
             try:
-                os.remove("update.zip")
+                # Extract to a temporary directory
+                temp_dir = "update_temp"
+                os.makedirs(temp_dir, exist_ok=True)
+                with zipfile.ZipFile(update_file, "r") as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Move files to current directory (customize based on your app structure)
+                # Assumes zip contains a folder like "GameSensePro-1.0.4"
+                extracted_folder = os.path.join(temp_dir, os.listdir(temp_dir)[0])
+                for item in os.listdir(extracted_folder):
+                    src = os.path.join(extracted_folder, item)
+                    dst = os.path.join(".", item)
+                    if os.path.isdir(src):
+                        shutil.copytree(src, dst, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(src, dst)
+                
+                progress.update(task, advance=20)
+                
+                # Clean up
+                shutil.rmtree(temp_dir)
+                os.remove(update_file)
                 console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Cleaned up temporary files[/]")
+                
+                progress.update(task, advance=10)
+                return True
             except Exception as e:
-                log_error(f"Failed to clean up update file: {e}")
-                console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Failed to clean up temporary files[/]")
-            
-            return True
+                log_error(f"Failed to apply update: {e}")
+                console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to apply update: {e}[/]")
+                return False
+        except requests.exceptions.HTTPError as e:
+            log_error(f"Update download failed: HTTP {e.response.status_code} - {e}")
+            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to download update: {e}[/]")
+            return False
         except Exception as e:
             log_error(f"Update download failed: {e}")
-            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to download update[/]")
-            
-            # Attempt to clean up if download failed
+            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to download update: {e}[/]")
+            return False
+        finally:
+            # Clean up if update failed
             try:
                 if os.path.exists("update.zip"):
                     os.remove("update.zip")
+                if os.path.exists("update_temp"):
+                    shutil.rmtree("update_temp")
             except:
                 pass
-            
-            return False
-        finally:
             time.sleep(3)
