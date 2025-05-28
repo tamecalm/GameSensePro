@@ -363,7 +363,7 @@ def get_device_info():
         if not refresh_rate:
             # Try dumpsys
             refresh_output = subprocess.getoutput("dumpsys display | grep refreshRate").strip()
-            refresh_match = re.search(r'refreshRate=(\d+\.\d{1,2})', refresh_output)
+            refresh_match = re.search(r'refreshRate=(\d+\.\d+)', refresh_output)
             
             if refresh_match:
                 refresh_rate = float(refresh_match.group(1))
@@ -376,10 +376,10 @@ def get_device_info():
                 
                 if refresh_match:
                     refresh_rate = float(refresh_match.group(1))
-                    console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Refresh rate via dumpsys alt: {refresh_rate}[/]")
+                    console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Refresh rate via dumpsys alternative: {refresh_rate}[/]")
                 else:
                     # Try getprop
-                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: dumpsys failed. Trying getprop...[/]")
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: dumpsys alternative failed. Trying getprop...[/]")
                     refresh_output = subprocess.getoutput("getprop persist.sys.display.refresh_rate").strip()
                     
                     if refresh_output.replace('.', '', 1).isdigit():
@@ -415,15 +415,15 @@ def get_device_info():
         }
         
         # Save device information
-        with Progress.open(DEVICE_FILE, "w", encoding='utf-8') as f:
+        with open(DEVICE_FILE, "w") as f:
             for k, v in info.items():
                 f.write(f"{k}: {v}\n")
         
         save_session(session)
         console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Device information saved[/]")
-        time.sleep(2)
+        time.sleep(3)
         
-        return True
+        return info
     except Exception as e:
         log_error(f"Device info error: {e}")
         console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: {e}[/]\n"
