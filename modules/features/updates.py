@@ -10,6 +10,7 @@ from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress
+from rich.prompt import Confirm
 
 from modules.utils.constants import GITHUB_REPO, CURRENT_VERSION, UPDATE_CHECK_FILE
 from modules.utils.logger import log_error
@@ -63,8 +64,15 @@ def check_for_updates():
                 console.print("\nChangelog:")
                 console.print(latest["body"])
                 
-                if download_update(latest):
-                    return True
+                # Ask user if they want to update
+                if Confirm.ask("\n[bold yellow]Would you like to download and install the update?[/]"):
+                    if download_update(latest):
+                        console.print("[bold green]Update downloaded successfully! Please restart the application to apply the update.[/]")
+                        return True
+                    else:
+                        console.print("[bold red]Failed to download update. Please try again later.[/]")
+                else:
+                    console.print("[bold yellow]Update skipped. You can check for updates again later.[/]")
             else:
                 console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] You're running the latest version![/]")
             
