@@ -30,6 +30,7 @@ def get_game_paths(game):
 
 # Common files
 DEVICE_MAPPING_FILE = f"{DATA_DIR}/device_mapping.json"
+DEVICE_FILE = f"{DATA_DIR}/device_info.txt"
 SESSION_FILE = f"{DATA_DIR}/session.json"
 LOG_FILE = f"{DATA_DIR}/logs.txt"
 BENCHMARK_FILE = f"{DATA_DIR}/benchmark_results.json"
