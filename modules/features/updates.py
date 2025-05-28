@@ -39,9 +39,9 @@ def check_for_updates():
                 "Accept": "application/vnd.github.v3+json"
             }
             
-            # Simulate real-time checking with smaller progress increments
-            progress.update(task, advance=20)
-            time.sleep(0.5)  # Simulate network delay
+            # Simulate real-time checking
+            progress.update(task, advance=10)
+            time.sleep(0.5)
             
             # Get latest release info with retry
             for attempt in range(3):
@@ -60,6 +60,12 @@ def check_for_updates():
             
             latest_version = latest["tag_name"].lstrip("v")
             needs_update, is_equal = compare_versions(CURRENT_VERSION, latest_version)
+            progress.update(task, advance=20)
+            
+            # Validate UPDATE_CHECK_FILE
+            update_file = UPDATE_CHECK_FILE if UPDATE_CHECK_FILE else "./update_info.json"
+            if not update_file:
+                raise ValueError("UPDATE_CHECK_FILE is empty or invalid")
             
             # Save update info
             update_info = {
@@ -69,13 +75,14 @@ def check_for_updates():
                 "update_available": needs_update
             }
             
-            os.makedirs(os.path.dirname(UPDATE_CHECK_FILE), exist_ok=True)
-            with open(UPDATE_CHECK_FILE, "w") as f:
+            update_dir = os.path.dirname(update_file) or "."
+            os.makedirs(update_dir, exist_ok=True)
+            with open(update_file, "w") as f:
                 json.dump(update_info, f, indent=2)
             
-            progress.update(task, advance=40)
+            progress.update(task, advance=30)
             
-            # Ensure progress bar completes before showing changelog
+            # Complete progress bar
             time.sleep(0.5)
             
             if needs_update:
@@ -115,8 +122,8 @@ def check_for_updates():
             log_error(f"Update check failed: HTTP {e.response.status_code} - {e}")
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
             return False
-        except IOError as e:
-            log_error(f"Failed to write update info: {e}")
+        except (OSError, ValueError) as e:
+            log_error(f"Failed to save update info: {e}")
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
             return False
         except Exception as e:
@@ -124,7 +131,9 @@ def check_for_updates():
             console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
             return False
         finally:
+            progress.update(task, completed=100)  # Ensure bar completes on error
             time.sleep(3)
+            console.input("Press Enter to return to menu...")
 
 def compare_versions(current, latest):
     """Compare version numbers, handling non-numeric tags."""
@@ -243,3 +252,4 @@ def download_and_apply_update(latest):
             except:
                 pass
             time.sleep(3)
+            console.input("Press Enter to return to menu...")
