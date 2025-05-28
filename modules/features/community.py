@@ -9,9 +9,9 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from modules.ui.display import clear_screen
 from modules.utils.constants import COMMUNITY_DB_FILE
 from modules.utils.logger import log_error
-from modules.ui.display import clear_screen
 
 console = Console()
 
