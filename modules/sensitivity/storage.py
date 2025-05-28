@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from rich.console import Console
 
-from modules.utils.constants import RESULT_TXT, RESULT_JSON
+from modules.utils.constants import GAMES_DIR
 from modules.utils.logger import log_error
 from modules.stats.manager import update_stats
 
@@ -28,9 +28,12 @@ def save_results(info, cam, fire, gyro, player_style, game, mode):
     """
     try:
         mode_display = f" ({mode})" if mode else ""
+        game_dir = GAMES_DIR[game]
+        result_txt = f"{game_dir}/sensitivity_result.txt"
+        result_json = f"{game_dir}/sensitivity_result.json"
         
         # Save as text file
-        with open(RESULT_TXT, "w") as f:
+        with open(result_txt, "w") as f:
             f.write(f"=== {game.upper()}{mode_display} SENSITIVITY SETTINGS ===\n")
             f.write(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
             
@@ -66,13 +69,13 @@ def save_results(info, cam, fire, gyro, player_style, game, mode):
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
-        with open(RESULT_JSON, "w") as f:
+        with open(result_json, "w") as f:
             json.dump(result, f, indent=2)
         
         # Update statistics
         update_stats(result)
         
-        console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Results saved to {RESULT_TXT} and {RESULT_JSON}[/]")
+        console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] Success: Results saved to {result_txt} and {result_json}[/]")
     except Exception as e:
         log_error(f"Failed to save results: {e}")
         console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save results - {e}[/]")

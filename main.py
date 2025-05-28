@@ -22,6 +22,10 @@ from modules.ui.menus import menu
 from modules.sensitivity.feedback import collect_feedback
 from modules.stats.viewer import display_stats
 from modules.stats.manager import clear_stats
+from modules.features.benchmark import run_benchmark
+from modules.features.community import display_community_stats
+from modules.features.updates import check_for_updates
+from modules.features.tutorial import run_tutorial
 
 # Initialize rich console
 console = Console()
@@ -38,7 +42,7 @@ def main():
     language_code = select_language()
     translations = load_language(language_code)
     
-    # Get game selection (mode selection removed as requested)
+    # Get game selection
     game = get_game_selection(translations)
     mode = ""  # Empty mode as the feature is removed
     
@@ -77,6 +81,29 @@ def main():
             Prompt.ask(f"[bold grey]{translations.get('press_enter', 'Press Enter to return to menu...')}[/]")
         
         elif choice == "5":
+            # Run benchmark
+            results = run_benchmark()
+            if results:
+                console.print(f"[bold green]Benchmark Score: {results['performance_score']}[/]")
+            Prompt.ask(f"[bold grey]{translations.get('press_enter', 'Press Enter to return to menu...')}[/]")
+        
+        elif choice == "6":
+            # View community settings
+            display_community_stats()
+            Prompt.ask(f"[bold grey]{translations.get('press_enter', 'Press Enter to return to menu...')}[/]")
+        
+        elif choice == "7":
+            # Check for updates
+            if check_for_updates():
+                console.print("[bold yellow]Update available! Please restart the application to apply updates.[/]")
+            Prompt.ask(f"[bold grey]{translations.get('press_enter', 'Press Enter to return to menu...')}[/]")
+        
+        elif choice == "8":
+            # Start tutorial
+            run_tutorial()
+            Prompt.ask(f"[bold grey]{translations.get('press_enter', 'Press Enter to return to menu...')}[/]")
+        
+        elif choice == "9":
             # Exit program
             from modules.ui.display import clear_screen
             from rich.panel import Panel
