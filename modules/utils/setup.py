@@ -8,7 +8,7 @@ import subprocess
 from datetime import datetime
 from rich.console import Console
 
-from modules.utils.constants import DATA_DIR, DEVICE_MAPPING_FILE
+from modules.utils.constants import DATA_DIR, DEVICE_MAPPING_FILE, GAMES_DIR
 from modules.utils.logger import log_error
 
 console = Console()
@@ -18,7 +18,12 @@ def ensure_data_folder():
     Ensures that the data folder and required files exist.
     Creates initial device mapping if it doesn't exist.
     """
+    # Create main data directory
     os.makedirs(DATA_DIR, exist_ok=True)
+    
+    # Create game-specific directories
+    for game_dir in GAMES_DIR.values():
+        os.makedirs(game_dir, exist_ok=True)
     
     if not os.path.exists(DEVICE_MAPPING_FILE):
         # Initial device mapping

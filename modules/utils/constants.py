@@ -36,7 +36,7 @@ BENCHMARK_FILE = f"{DATA_DIR}/benchmark_results.json"
 COMMUNITY_DB_FILE = f"{DATA_DIR}/community_settings.json"
 UPDATE_CHECK_FILE = f"{DATA_DIR}/update_info.json"
 
-# Game settings with modes and max sensitivity
+# Game settings with max sensitivity
 GAME_SETTINGS = {
     "Blood Strike": {
         "cap": 300,
