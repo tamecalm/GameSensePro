@@ -92,7 +92,7 @@ GAME_SETTINGS = {
 
 # GitHub repository info for updates
 GITHUB_REPO = "https://api.github.com/repos/tamecalm/gamesensepro"
-CURRENT_VERSION = "1.0.8"  # Update to the current version of your application
+CURRENT_VERSION = "1.0.9"  # Update to the current version of your application
 UPDATE_CHECK_FILE = "./update_info.json"  # Ensure valid path
 
 # Translation API URL
