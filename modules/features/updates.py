@@ -30,18 +30,19 @@ def check_for_updates():
         border_style="magenta"
     ))
     
-    with Progress() as progress:
-        task = progress.add_task("[cyan]Checking for updates...", total=100)
+    try:
+        headers = {
+            "User-Agent": "GameSensePro/1.0.0",
+            "Accept": "application/vnd.github.v3+json"
+        }
         
-        try:
-            headers = {
-                "User-Agent": "GameSensePro/1.0.0",
-                "Accept": "application/vnd.github.v3+json"
-            }
+        # Run progress bar for update check
+        with Progress() as progress:
+            task = progress.add_task("[cyan]Checking for updates...", total=100)
             
             # Simulate real-time checking
             progress.update(task, advance=10)
-            time.sleep(0.5)
+            time.sleep(0.3)
             
             # Get latest release info with retry
             for attempt in range(3):
@@ -53,7 +54,7 @@ def check_for_updates():
                     if attempt == 2:
                         raise e
                     progress.update(task, advance=10)
-                    time.sleep(2)
+                    time.sleep(1)
             
             latest = response.json()
             progress.update(task, advance=30)
@@ -81,30 +82,33 @@ def check_for_updates():
                 json.dump(update_info, f, indent=2)
             
             progress.update(task, advance=30)
-            
-            # Complete progress bar
-            time.sleep(0.5)
-            
-            if needs_update:
-                # Display changelog
-                changelog = latest.get("body", "No changelog provided.")
-                max_length = 200
-                max_lines = 3
-                lines = changelog.splitlines()
-                if len(changelog) > max_length or len(lines) > max_lines:
-                    short_changelog = "\n".join(lines[:max_lines])[:max_length] + "..."
-                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
-                    console.print("\nChangelog (shortened):")
-                    console.print(short_changelog)
+        
+        # Display changelog and prompt after progress bar closes
+        if needs_update:
+            # Display changelog
+            changelog = latest.get("body", "No changelog provided.")
+            max_length = 200
+            max_lines = 3
+            lines = changelog.splitlines()
+            if len(changelog) > max_length or len(lines) > max_lines:
+                short_changelog = "\n".join(lines[:max_lines])[:max_length] + "..."
+                console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
+                console.print("\nChangelog (shortened):")
+                console.print(short_changelog)
+                try:
                     if Confirm.ask("[bold yellow]Would you like to view the full changelog?[/]"):
                         console.print("\nFull Changelog:")
                         console.print(changelog)
-                else:
-                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
-                    console.print("\nChangelog:")
-                    console.print(changelog)
-                
-                # Prompt for update
+                except Exception as e:
+                    log_error(f"Changelog prompt failed: {e}")
+                    console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Unable to show changelog prompt, proceeding with update prompt[/]")
+            else:
+                console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update available: v{latest_version}[/]")
+                console.print("\nChangelog:")
+                console.print(changelog)
+            
+            # Prompt for update
+            try:
                 if Confirm.ask("\n[bold yellow]Would you like to download and install the update?[/]"):
                     clear_screen()
                     if download_and_apply_update(latest):
@@ -114,26 +118,27 @@ def check_for_updates():
                         console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] Failed to install update. Please try again later.[/]")
                 else:
                     console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] Update skipped. You can check for updates again later.[/]")
-            else:
-                console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] You're running the latest version (v{latest_version})!{' (same as current)' if is_equal else ''}[/]")
-            
-            return False
-        except requests.exceptions.HTTPError as e:
-            log_error(f"Update check failed: HTTP {e.response.status_code} - {e}")
-            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
-            return False
-        except (OSError, ValueError) as e:
-            log_error(f"Failed to save update info: {e}")
-            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
-            return False
-        except Exception as e:
-            log_error(f"Update check failed: {e}")
-            console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
-            return False
-        finally:
-            progress.update(task, completed=100)  # Ensure bar completes on error
-            time.sleep(3)
-            console.input("Press Enter to return to menu...")
+            except Exception as e:
+                log_error(f"Update prompt failed: {e}")
+                console.print(f"[bold yellow][{datetime.now().strftime('%H:%M:%S')}] WARNING: Unable to show update prompt, skipping update[/]")
+        else:
+            console.print(f"[bold green][{datetime.now().strftime('%H:%M:%S')}] You're running the latest version (v{latest_version})!{' (same as current)' if is_equal else ''}[/]")
+        
+        return False
+    except requests.exceptions.HTTPError as e:
+        log_error(f"Update check failed: HTTP {e.response.status_code} - {e}")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
+        return False
+    except (OSError, ValueError) as e:
+        log_error(f"Failed to save update info: {e}")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to save update info: {e}[/]")
+        return False
+    except Exception as e:
+        log_error(f"Update check failed: {e}")
+        console.print(f"[bold red][{datetime.now().strftime('%H:%M:%S')}] ERROR: Failed to check for updates: {e}[/]")
+        return False
+    finally:
+        console.input("Press Enter to return to menu...")
 
 def compare_versions(current, latest):
     """Compare version numbers, handling non-numeric tags."""
@@ -251,5 +256,4 @@ def download_and_apply_update(latest):
                     shutil.rmtree("update_temp")
             except:
                 pass
-            time.sleep(3)
             console.input("Press Enter to return to menu...")
