@@ -14,6 +14,19 @@ GAMES_DIR = {
     "PUBG Mobile": f"{DATA_DIR}/pubg_mobile"
 }
 
+# Common files
+DEVICE_FILE = f"{DATA_DIR}/device_info.txt"
+DEVICE_MAPPING_FILE = f"{DATA_DIR}/device_mapping.json"
+SESSION_FILE = f"{DATA_DIR}/session.json"
+LOG_FILE = f"{DATA_DIR}/logs.txt"
+BENCHMARK_FILE = f"{DATA_DIR}/benchmark_results.json"
+COMMUNITY_DB_FILE = f"{DATA_DIR}/community_settings.json"
+UPDATE_CHECK_FILE = f"{DATA_DIR}/update_info.json"
+FEEDBACK_FILE = f"{DATA_DIR}/feedback.json"
+RESULT_TXT = f"{DATA_DIR}/sensitivity_result.txt"
+RESULT_JSON = f"{DATA_DIR}/sensitivity_result.json"
+STATS_FILE = f"{DATA_DIR}/stats.json"
+
 # Game-specific file paths
 def get_game_paths(game):
     """Get file paths for a specific game."""
@@ -27,14 +40,6 @@ def get_game_paths(game):
         "benchmark": f"{game_dir}/benchmark.json",
         "tutorial": f"{game_dir}/tutorial_progress.json"
     }
-
-# Common files
-DEVICE_MAPPING_FILE = f"{DATA_DIR}/device_mapping.json"
-SESSION_FILE = f"{DATA_DIR}/session.json"
-LOG_FILE = f"{DATA_DIR}/logs.txt"
-BENCHMARK_FILE = f"{DATA_DIR}/benchmark_results.json"
-COMMUNITY_DB_FILE = f"{DATA_DIR}/community_settings.json"
-UPDATE_CHECK_FILE = f"{DATA_DIR}/update_info.json"
 
 # Game settings with max sensitivity
 GAME_SETTINGS = {
